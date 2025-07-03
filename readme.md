@@ -134,3 +134,42 @@ To better manage traffic:
 - Light traffic pools can be grouped and run in a shared listener container
 - **High-volume pools** (like `USDC-ETH-0.05`) can be deployed in a **separate container** using a minimal Docker Compose override or custom service definition
 - This prevents noisy pools from starving less active ones
+
+
+###  Architecture Overview
+
+```text
++----------------------+
+|                      |
+|   [ Ethereum Node ]  |  <-- Alchemy
+|                      |
++----------+-----------+
+           |
+           v
++----------------------------+
+|      Listener / Producer   |   (1 per .toml config) 
+| - Web3.py                  |
+| - Parses Uniswap v3 Events |
++------------+---------------+
+             |
+             v
+     +-----------------+
+     |     Kafka        |   <-- Topic: uniswap.Swap.<pair>, DLQ
+     |  (Event Broker)  |
+     +--------+---------+
+              |
+              v
+     +--------------------+
+     |     Consumer        |
+     | - Reads from Kafka  |
+     | - Transforms events |
+     | - Writes to DB      |
+     +--------+-----------+
+              |
+              v
+     +------------------+
+     |    PostgreSQL     |
+     |  (Structured DB)  |
+     +------------------+
+
+```
