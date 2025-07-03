@@ -1,0 +1,8 @@
+[pair]
+name = "WETH-USDT-0.01"
+
+[pool]
+address = "0xc7bBeC68d12a0d1830360F8Ec58fA599bA1b0e9b"
+
+[kafka]
+bootstrap_servers = "kafka:29092"

@@ -70,13 +70,16 @@ class UniswapSwapTransformer:
         raw_json_str = json.dumps(self.raw, sort_keys=True, separators=(",", ":"))
         raw_hash = hashlib.sha256(raw_json_str.encode("utf-8")).hexdigest()
 
+    
+        iso_timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self.raw["timestamp"]))
+
         return {
             "schema_version": "v1",
             "event_type": "Swap",
             "uuid": self.raw["uuid"],
             "pair": self.raw["pair"],
             "block_number": self.raw["blockNumber"],
-            "timestamp": self.raw["timestamp"],
+            "timestamp": iso_timestamp,
             "tx_hash": self.raw["txHash"],
             "sender": self.raw["sender"],
             "recipient": self.raw["recipient"],
@@ -92,6 +95,7 @@ class UniswapSwapTransformer:
             "raw": self.raw,
         }
 
+
 class BaseUniswapListener(ABC):
     def __init__(self, config: dict):
         load_dotenv()
@@ -101,7 +105,7 @@ class BaseUniswapListener(ABC):
         self.pool_address = Web3.to_checksum_address(self._get_pool_address())
         self.event_abi = self._get_event_abi()
 
-        self.contract = self.web3.eth.contract(address=self.pool_address, abi=self.config["abi"])
+        self.contract = self.contract = self.web3.eth.contract(address=self.pool_address, abi=self._load_shared_abi())
         self.event_topic_hash = self.web3.keccak(
             text=self.event_abi['name'] + "(" + ",".join(i['type'] for i in self.event_abi['inputs']) + ")"
         ).hex()
@@ -142,6 +146,17 @@ class BaseUniswapListener(ABC):
         self.token0_decimals = token0.functions.decimals().call()
         self.token1_decimals = token1.functions.decimals().call()
 
+    def _load_shared_abi(self):
+        path = os.path.join("configs", "uniswap_swap_abi.json")
+        with open(path) as f:
+            return json.load(f)
+
+    def _get_event_abi(self):
+        return next(
+            (item for item in self._load_shared_abi() if item["type"] == "event" and item["name"] == "Swap"),
+            None
+        )
+    
     def _hexbytes_to_str(self, obj):
         if isinstance(obj, HexBytes):
             return obj.hex()

@@ -1,6 +1,23 @@
 version: "3.9"
 
 services:
+  uniswap-consumer:
+    build:
+      context: ./consumers
+      dockerfile: Dockerfile
+    container_name: uniswap-consumer
+    depends_on:
+      - kafka
+      - postgres
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=ozi
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      
+    networks:
+      - ozi-net
+
   uniswap-listener:
     build:
       context: ./producers
@@ -11,8 +28,9 @@ services:
         condition: service_healthy
       zookeeper:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
-      - RPC_ENDPOINT=<endpoint>
       - KAFKA_BROKER=kafka:29092
     volumes:
       - ./producers/configs:/app/configs
@@ -57,6 +75,22 @@ services:
       retries: 10
     networks:
       - ozi-net
+    
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ozi
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - ozi-net
+volumes:
+  pgdata:
 
 networks:
   ozi-net:
